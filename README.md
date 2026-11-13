@@ -37,3 +37,16 @@ Sonra tarayıcıda `Ctrl+Shift+R` (önbelleği atlayarak yenile).
 - `+ Ekle`: cihaz, kamera veya robot kartı ekler. Düzen HA kullanıcı verisine kaydedilir.
 - Tüm Cihazlar: her cihazın entity_id adını gösterir.
 - Kameralar: go2rtc kurulunca çalışır. Kat planı 3D modülü sonraki aşamada.
+
+## Yüz tanıma (Merhaba, <ad>)
+
+Tabletin kamerası kişiyi görünce ekranda adıyla selam verir. Varsayılan **kapalı**.
+
+1. `config.js` içine ekle: `faces: { enabled: true }` (diğer seçenekler `config.example.js` içinde).
+2. Sayfayı yenile, **Yüzler** sekmesinden **Kişi ekle**: adı yaz, kameraya bakıp 3-5 fotoğraf ekle (başı biraz çevirerek), Kaydet.
+3. Tarayıcı kamera izni sorar. Firefox'ta "Bu kararı hatırla"yı seç. Kamera yalnızca `http://localhost` ya da `https` adresinde açılır, tablette `localhost:8123` kullan.
+
+Gizlilik: görüntü tarayıcıda işlenir, hiçbir yere gönderilmez. Kayda fotoğraf değil, her yüz için 128 sayılık bir dizi girer ve yalnızca bu Home Assistant'ta durur. Tanıma bilinen kişiler içindir. Evde birini kaydetmeden önce onun haberi olsun.
+
+Kişi tanınınca Home Assistant'a `panel_face_seen` olayı (`name` ile) gönderilir. Otomasyonda tetikleyici olarak kullanabilirsin (örneğin gelince ışık aç).
+Kütüphane: @vladmandic/face-api (MIT), modeller `faces/models` içinde, internet gerekmez.

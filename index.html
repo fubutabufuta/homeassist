@@ -12,6 +12,7 @@
   <button data-tab="cams"><span>Kameralar</span></button>
   <button data-tab="plan"><span>Kat Planı</span></button>
   <button data-tab="robot"><span>Robot</span></button>
+  <button data-tab="faces"><span>Yüzler</span></button>
   <button data-tab="all"><span>Tüm Cihazlar</span></button>
 </nav>
 
@@ -23,6 +24,7 @@
       <div id="date"></div>
     </div>
     <div id="chips"></div>
+    <div id="camchip" class="chip" hidden><i></i><span>Yüz tanıma açık</span></div>
     <div class="spacer"></div>
     <div id="status" class="badge">Bağlanıyor</div>
   </header>
@@ -32,6 +34,7 @@
     <section id="tab-cams" class="tab"></section>
     <section id="tab-plan" class="tab"></section>
     <section id="tab-robot" class="tab"></section>
+    <section id="tab-faces" class="tab"></section>
     <section id="tab-all" class="tab">
       <input id="search" type="search" placeholder="Cihaz adı ya da entity_id ile ara">
       <div id="filters"></div>
@@ -44,5 +47,6 @@
 <script src="config.js"></script>
 <script src="ha.js"></script>
 <script src="app.js"></script>
+<script src="faces.js"></script>
 </body>
 </html>

@@ -26,6 +26,16 @@ window.PANEL_CONFIG = {
   // Robot süpürge entity_id'si (Roborock entegrasyonu eklenince "Tüm cihazlar"da görünür)
   vacuum: "",
 
+  // Yüz tanıma: kişi gelince panel "Merhaba <ad>" gösterir. Varsayılan kapalı.
+  // Kişileri panelde Yüzler sekmesinden eklersin. Kamera görüntüsü hiçbir yere gönderilmez.
+  faces: {
+    enabled: false,        // true yapınca tabletin kamerası açılır
+    greetUnknown: false,   // tanınmayan yüze sadece "Merhaba" de
+    speak: false,          // sesli selam (tarayıcının Türkçe sesi gerekir)
+    cooldownMin: 5,        // aynı kişiyi tekrar karşılamadan önce bekleme (dakika)
+    threshold: 0.5         // küçüldükçe daha katı eşleşme (0.4 - 0.6 arası dene)
+  },
+
   // Görünüm: "auto" (HA'daki güneşe göre gündüz/gece), "day" ya da "night"
   theme: "auto",
 

@@ -28,6 +28,7 @@
     cube: '<path d="M12 3l8 4.500v9L12 21l-8-4.500v-9z"/>',
     home: '<path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/>',
     plan: '<path d="M3 3h18v18H3zM3 12h8M11 3v18M11 15h10"/>',
+    face: '<circle cx="12" cy="12" r="9"/><path d="M9 10v1.500M15 10v1.500M8.500 15c1.800 1.600 5.200 1.600 7 0"/>',
     all: '<rect x="3" y="3" width="7" height="7" rx="1.500"/><rect x="14" y="3" width="7" height="7" rx="1.500"/><rect x="3" y="14" width="7" height="7" rx="1.500"/><rect x="14" y="14" width="7" height="7" rx="1.500"/>'
   };
   function iconFor(id) {
@@ -38,7 +39,7 @@
       button: "dot", person: "person", sun: "sun", weather: "sun" };
     return svg(P[m[d] || "cube"]);
   }
-  const NAV_ICONS = { home: P.home, cams: P.camera, plan: P.plan, robot: P.vacuum, all: P.all };
+  const NAV_ICONS = { home: P.home, cams: P.camera, plan: P.plan, robot: P.vacuum, faces: P.face, all: P.all };
   document.querySelectorAll("#tabs button").forEach((b) => b.insertAdjacentHTML("afterbegin", svg(NAV_ICONS[b.dataset.tab])));
   const NAMES = { light: "Işıklar", switch: "Prizler ve anahtarlar", input_boolean: "Sanal anahtarlar", fan: "Fanlar",
     sensor: "Sensörler", binary_sensor: "Algılayıcılar", media_player: "Medya", vacuum: "Süpürge", camera: "Kameralar",
@@ -437,7 +438,9 @@
     else if (currentTab === "cams") renderCams();
     else if (currentTab === "plan") renderPlan();
     else if (currentTab === "robot") renderRobot();
+    else if (currentTab === "faces") { if (window.Faces) window.Faces.renderTab($("#tab-faces")); }
     else if (currentTab === "all") renderList();
+    if (currentTab !== "faces" && window.Faces) window.Faces.leaveTab();
     if (currentTab !== "cams") { const c = $("#tab-cams"); c.dataset.built = ""; c.replaceChildren(); }
   }
   function renderChanged(id) {
@@ -485,4 +488,5 @@
   $("#search").addEventListener("input", renderList);
 
   renderAll();
+  window.PanelAPI = { ha, toast };
 })();
