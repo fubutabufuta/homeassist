@@ -1,7 +1,7 @@
 // Yüz tanıma ve karşılama: kamera görüntüsü tarayıcıda işlenir, hiçbir yere gönderilmez.
 // Kayıtlı kişilerin yüz verisi (sayı dizisi, fotoğraf değil) yalnızca bu Home Assistant'ta durur.
 (() => {
-  const DEF = { enabled: false, greetUnknown: false, speak: false, threshold: 0.5, cooldownMin: 5, intervalMs: 800 };
+  const DEF = { enabled: false, greetUnknown: false, speak: false, voice: "", threshold: 0.5, cooldownMin: 5, intervalMs: 800 };
   const cfg = Object.assign({}, DEF, (window.PANEL_CONFIG && window.PANEL_CONFIG.faces) || {});
   const MODELS = new URL("faces/models", location.href).href;
   let api = null;                      // { ha, el, toast }
@@ -88,12 +88,30 @@
     const vs = window.speechSynthesis.getVoices();
     return vs.find((v) => /^tr(-|_|$)/i.test(v.lang)) || null;
   }
-  function say(text) {
+  function browserSay(text) {
     if (!canSpeak()) return false;
     const u = new SpeechSynthesisUtterance(text); u.lang = "tr-TR"; u.rate = 0.95;
     const v = trVoice(); if (v) u.voice = v;
     window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
     return !!v;
+  }
+  // Home Assistant sesi (ör. Piper): doğal Türkçe. Olmazsa tarayıcı sesine döner.
+  let audio = null;
+  async function haSay(text) {
+    const r = await fetch(api.ha.base + "/api/tts_get_url", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + api.ha.token, "Content-Type": "application/json" },
+      body: JSON.stringify({ engine_id: cfg.voice, message: text, language: "tr", cache: true })
+    });
+    if (!r.ok) throw new Error("TTS HTTP " + r.status);
+    const j = await r.json();
+    const a = new Audio(j.url.startsWith("http") ? j.url : api.ha.base + j.path);
+    if (audio) audio.pause();
+    audio = a; await a.play();
+  }
+  function say(text) {
+    if (cfg.voice) { haSay(text).catch(() => browserSay(text)); return true; }
+    return browserSay(text);
   }
   // Tarayıcılar sayfa hiç dokunulmadan konuşmaya izin vermeyebilir: ilk dokunuşta sessizce kilidi aç
   document.addEventListener("pointerdown", () => {
@@ -159,8 +177,9 @@
     const vbtn = el("button", "btn", "Sesi dene");
     const vmsg = el("span", "tip");
     const vstate = () => {
-      if (!canSpeak()) { vmsg.textContent = "Bu tarayıcı konuşmayı desteklemiyor."; return; }
-      vmsg.textContent = trVoice() ? "Türkçe ses bulundu." : "Türkçe ses bulunamadı, ses kötü ya da yabancı aksanlı çıkabilir.";
+      if (!cfg.voice && !canSpeak()) { vmsg.textContent = "Bu tarayıcı konuşmayı desteklemiyor."; return; }
+      if (cfg.voice) { vmsg.textContent = "Home Assistant sesi kullanılıyor: " + cfg.voice; return; }
+      vmsg.textContent = trVoice() ? "Türkçe ses bulundu." : "Türkçe ses bulunamadı. Daha iyi ses için Piper kur (README, Sesli selam bölümü).";
     };
     vbtn.addEventListener("click", () => { const ok = say("Merhaba " + (people[0] ? people[0].name : "dünya")); vstate();
       if (!cfg.speak) api.toast("Sesli selam config.js içinde kapalı (speak: false)"); else if (!ok) api.toast("Türkçe ses bulunamadı"); });

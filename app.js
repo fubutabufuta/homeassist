@@ -29,6 +29,8 @@
     home: '<path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/>',
     plan: '<path d="M3 3h18v18H3zM3 12h8M11 3v18M11 15h10"/>',
     face: '<circle cx="12" cy="12" r="9"/><path d="M9 10v1.500M15 10v1.500M8.500 15c1.800 1.600 5.200 1.600 7 0"/>',
+    pin: '<path d="M12 21s7-6.200 7-11.500A7 7 0 0 0 5 9.500C5 14.800 12 21 12 21z"/><circle cx="12" cy="9.500" r="2.500"/>',
+    cloudsun: '<circle cx="8" cy="8" r="3"/><path d="M8 2v1M2 8h1M3.800 3.800l.7.7M12.200 3.800l-.7.7"/><path d="M8 21h9a4 4 0 0 0 0-8 5.500 5.500 0 0 0-10.400 1.500A3.300 3.300 0 0 0 8 21z"/>',
     all: '<rect x="3" y="3" width="7" height="7" rx="1.500"/><rect x="14" y="3" width="7" height="7" rx="1.500"/><rect x="3" y="14" width="7" height="7" rx="1.500"/><rect x="14" y="14" width="7" height="7" rx="1.500"/>'
   };
   function iconFor(id) {
@@ -39,7 +41,7 @@
       button: "dot", person: "person", sun: "sun", weather: "sun" };
     return svg(P[m[d] || "cube"]);
   }
-  const NAV_ICONS = { home: P.home, cams: P.camera, plan: P.plan, robot: P.vacuum, faces: P.face, all: P.all };
+  const NAV_ICONS = { home: P.home, plan: P.plan, faces: P.face, all: P.all, weather: P.cloudsun, map: P.pin, tv: P.tv, robot: P.vacuum, camera: P.camera };
   document.querySelectorAll("#tabs button").forEach((b) => b.insertAdjacentHTML("afterbegin", svg(NAV_ICONS[b.dataset.tab])));
   const NAMES = { light: "Işıklar", switch: "Prizler ve anahtarlar", input_boolean: "Sanal anahtarlar", fan: "Fanlar",
     sensor: "Sensörler", binary_sensor: "Algılayıcılar", media_player: "Medya", vacuum: "Süpürge", camera: "Kameralar",
@@ -143,12 +145,47 @@
   }
 
   // ---------- sekmeler ----------
-  document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => {
-    document.querySelectorAll("#tabs button").forEach((x) => x.classList.toggle("active", x === b));
-    document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.id === "tab-" + b.dataset.tab));
-    currentTab = b.dataset.tab;
+  // Ana sayfaya eklenen "ürünler" (hava, harita, TV, robot, kamera) solda kendi sekmesini alır.
+  const KIND_LABEL = { weather: "Hava durumu", map: "Harita", tv: "TV", robot: "Robot", camera: "Kamera" };
+  function detailKind(it) {
+    if (it.type === "weather" || it.type === "map" || it.type === "robot") return it.type;
+    if (it.type === "camera") return "camera";
+    if (it.type === "entity") {
+      const d = domain(it.entity);
+      if (d === "camera") return "camera";
+      if (d === "vacuum") return "robot";
+      if (d === "media_player") return "tv";
+    }
+    return null;
+  }
+  const findItem = (tab) => (layout || []).find((o) => "w_" + o.id === tab);
+  const itemName = (it) => it.name || (it.entity && states[it.entity] ? fname(states[it.entity]) : "") || it.src || KIND_LABEL[detailKind(it)];
+  function syncTabs() {
+    const box = $("#ptabs"); if (!box || !layout) return;
+    const items = layout.filter((o) => detailKind(o));
+    const sig = items.map((o) => o.id + ":" + itemName(o) + ":" + detailKind(o)).join("|");
+    if (box.dataset.sig !== sig) {
+      box.dataset.sig = sig; box.replaceChildren();
+      items.forEach((o) => {
+        const b = el("button"); b.dataset.tab = "w_" + o.id;
+        b.insertAdjacentHTML("afterbegin", svg(NAV_ICONS[detailKind(o)]));
+        b.append(el("span", "", itemName(o)));
+        box.append(b);
+      });
+    }
+    document.querySelectorAll("#tabs button").forEach((x) => x.classList.toggle("active", x.dataset.tab === currentTab));
+    if (currentTab.startsWith("w_") && !findItem(currentTab)) setTab("home");
+  }
+  function setTab(t) {
+    currentTab = t;
+    const sec = t.startsWith("w_") ? "tab-detail" : "tab-" + t;
+    document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x.id === sec));
+    document.querySelectorAll("#tabs button").forEach((x) => x.classList.toggle("active", x.dataset.tab === t));
     renderAll();
-  }));
+  }
+  $("#tabs").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-tab]"); if (b) setTab(b.dataset.tab);
+  });
 
   // ---------- HA kamera görüntüsü (camera.* cihazları) ----------
   // Önce HA'nın MJPEG akışı denenir, olmazsa 2 saniyede bir anlık görüntü yenilenir.
@@ -204,9 +241,11 @@
     if (!v) { try { v = JSON.parse(localStorage.getItem("panel_layout")); } catch (e) {} }
     layout = Array.isArray(v) ? v : seedLayout();
     layoutLoaded = true;
+    syncTabs();
     if (currentTab === "home") renderHome();
   }
   function saveLayout() {
+    syncTabs();
     try { localStorage.setItem("panel_layout", JSON.stringify(layout)); } catch (e) {}
     ha.send({ type: "frontend/set_user_data", key: "panel_layout", value: layout }).catch(() => {});
   }
@@ -225,6 +264,7 @@
     const root = $("#tab-home"); root.replaceChildren();
     Object.keys(widgetRefs).forEach((k) => delete widgetRefs[k]);
     if (!layout) { root.append(el("div", "hint", "Düzen yükleniyor")); return; }
+    syncTabs();
 
     const bar = el("div", "toolbar");
     const eb = el("button", "btn" + (editMode ? " solid" : ""), editMode ? "Tamam" : "Düzenle");
@@ -259,12 +299,15 @@
     if (it.type === "entity" && domain(it.entity) === "camera") {
       body.append(makeHaCam(it.entity, it.name || (states[it.entity] ? fname(states[it.entity]) : ""), "home"));
       node.classList.add("nopad");
+      node.addEventListener("click", () => { if (!editMode) setTab("w_" + it.id); });
     } else if (it.type === "entity") {
       const d = domain(it.entity);
       const top = el("div", "wtop"), ico = el("div", "ico");
       ico.innerHTML = iconFor(it.entity);
       top.append(ico);
-      if (SWITCHY.includes(d)) { const sw = el("div", "sw"); sw.append(el("i")); top.append(sw); }
+      const opens = !!detailKind(it);
+      if (SWITCHY.includes(d)) { const sw = el("div", "sw"); sw.append(el("i")); top.append(sw);
+        if (opens) sw.addEventListener("click", (e) => { e.stopPropagation(); if (!editMode) toggle(it.entity); }); }
       const meta = el("div", "wmeta"), nm = el("div", "name"), stt = el("div", "state");
       meta.append(nm, stt); body.append(top, meta);
       if (d === "sensor") node.classList.add("sensor");
@@ -280,13 +323,20 @@
         node.classList.toggle("unavail", !s || s.state === "unavailable");
       };
       upd(); widgetRefs[it.id] = { entity: it.entity, update: upd };
-      node.addEventListener("click", () => { if (!editMode && controllable(it.entity)) toggle(it.entity); });
+      node.addEventListener("click", () => {
+        if (editMode) return;
+        if (opens) setTab("w_" + it.id); else if (controllable(it.entity)) toggle(it.entity);
+      });
     } else if (it.type === "camera") {
       const f = document.createElement("iframe");
       f.src = cfg.go2rtcUrl + "/stream.html?src=" + encodeURIComponent(it.src) + "&mode=webrtc,mse";
       f.allow = "autoplay; fullscreen";
       body.append(f, el("div", "label", it.name || it.src));
       node.classList.add("nopad");
+      node.addEventListener("click", () => { if (!editMode) setTab("w_" + it.id); });
+    } else if (window.Modules && window.Modules[it.type] && window.Modules[it.type].tile) {
+      window.Modules[it.type].tile(it, body, node, api);
+      node.addEventListener("click", () => { if (!editMode) setTab("w_" + it.id); });
     } else if (it.type === "robot") {
       const top = el("div", "wtop"), ico = el("div", "ico");
       ico.innerHTML = svg(P.vacuum); top.append(ico);
@@ -315,6 +365,7 @@
         node.classList.toggle("cleaning", !!s && s.state === "cleaning");
       };
       upd(); widgetRefs[it.id] = { entity: it.entity, update: upd };
+      node.addEventListener("click", () => { if (!editMode) setTab("w_" + it.id); });
     }
 
     if (editMode) {
@@ -409,6 +460,8 @@
       list.replaceChildren();
       const q = inp.value.trim().toLowerCase();
       const match = (t) => !q || t.toLowerCase().includes(q);
+      if (match("hava durumu hava")) row(svg(P.cloudsun), "Hava durumu", "Open-Meteo, anahtar gerekmez", "Ürün", () => addWidget({ type: "weather", name: "", w: 3, h: 2 }));
+      if (match("harita google map")) row(svg(P.pin), "Harita", "Google Harita, dokununca tam ekran", "Ürün", () => addWidget({ type: "map", name: "Harita", query: "", zoom: 14, w: 4, h: 3 }));
       const haCams = Object.keys(states).some((id) => domain(id) === "camera");
       (haCams ? [] : cfg.cameras).forEach((c) => { if (match("kamera " + c.name))
         row(svg(P.camera), "Kamera: " + c.name, "go2rtc, " + c.src, "", () => addWidget({ type: "camera", src: c.src, name: c.name, w: 4, h: 3 })); });
@@ -419,31 +472,6 @@
           () => addWidget(domain(id) === "camera" ? { type: "entity", entity: id, name: "", w: 4, h: 3 } : { type: "entity", entity: id, name: "", w: 2, h: 1 })));
     };
     inp.addEventListener("input", render); render();
-  }
-
-  // ---------- kameralar ----------
-  function renderCams() {
-    const root = $("#tab-cams");
-    if (currentTab !== "cams") { runStops("tab"); root.replaceChildren(); root.dataset.built = ""; return; }
-    if (root.dataset.built === "1") return;
-    root.dataset.built = "1";
-    const haIds = Object.keys(states).filter((id) => domain(id) === "camera").sort();
-    if (haIds.length) {
-      const g = el("div", "camgrid");
-      haIds.forEach((id) => { const box = el("div", "cam"); box.append(makeHaCam(id, fname(states[id]), "tab")); g.append(box); });
-      root.append(g); return;
-    }
-    if (!cfg.cameras.length) { root.append(el("div", "hint", "Kamera tanımlı değil. config.js içindeki cameras listesine ekle.")); return; }
-    const g = el("div", "camgrid");
-    cfg.cameras.forEach((c) => {
-      const box = el("div", "cam");
-      const f = document.createElement("iframe");
-      f.src = cfg.go2rtcUrl + "/stream.html?src=" + encodeURIComponent(c.src) + "&mode=webrtc,mse";
-      f.allow = "autoplay; fullscreen";
-      box.append(f, el("div", "label", c.name));
-      g.append(box);
-    });
-    root.append(g);
   }
 
   // ---------- kat planı ----------
@@ -457,9 +485,8 @@
   }
 
   // ---------- robot sekmesi ----------
-  function renderRobot() {
-    const root = $("#tab-robot"); root.replaceChildren();
-    const id = vacuumId();
+  function renderRobot(root, id) {
+    root.replaceChildren();
     const s = id && states[id];
     if (!s) {
       const h = el("div", "hint");
@@ -479,22 +506,51 @@
     wrap.append(row); root.append(wrap);
   }
 
+  // ---------- ürün sekmesi (ayrıntı) ----------
+  const api = {
+    cfg, ha, el, svg, toast, stateText, saveLayout, states: () => states,
+    onCleanup: (k, f) => camStops[k].push(f)
+  };
+  function renderDetailTab() {
+    const root = $("#tab-detail");
+    runStops("tab"); root.replaceChildren(); root._tvRefresh = null;
+    const it = findItem(currentTab);
+    if (!it) { if (layout) setTab("home"); else root.append(el("div", "hint", "Düzen yükleniyor")); return; }
+    const kind = detailKind(it);
+    if (kind === "weather" || kind === "map" || kind === "tv") window.Modules[kind].detail(root, it, api);
+    else if (kind === "robot") renderRobot(root, it.entity);
+    else if (kind === "camera") {
+      const box = el("div", "camfull");
+      if (it.type === "camera") {
+        const f = document.createElement("iframe");
+        f.src = cfg.go2rtcUrl + "/stream.html?src=" + encodeURIComponent(it.src) + "&mode=webrtc,mse";
+        f.allow = "autoplay; fullscreen"; box.append(f);
+      } else box.append(makeHaCam(it.entity, itemName(it), "tab"));
+      root.append(box);
+    }
+  }
+
   // ---------- tüm cihazlar ----------
   let filterDomain = "";
   function renderAll() {
     if (currentTab === "home") renderHome();
-    else if (currentTab === "cams") renderCams();
     else if (currentTab === "plan") renderPlan();
-    else if (currentTab === "robot") renderRobot();
+    else if (currentTab.startsWith("w_")) renderDetailTab();
     else if (currentTab === "faces") { if (window.Faces) window.Faces.renderTab($("#tab-faces")); }
     else if (currentTab === "all") renderList();
     if (currentTab !== "faces" && window.Faces) window.Faces.leaveTab();
     if (currentTab !== "home") { runStops("home"); $("#tab-home").replaceChildren(); }
-    if (currentTab !== "cams") { const c = $("#tab-cams"); c.dataset.built = ""; c.replaceChildren(); }
+    if (!currentTab.startsWith("w_")) { runStops("tab"); $("#tab-detail").replaceChildren(); }
+    syncTabs();
   }
   function renderChanged(id) {
     if (currentTab === "home") Object.values(widgetRefs).forEach((w) => { if (w.entity === id) w.update(); });
-    else if (currentTab === "robot" && id === vacuumId()) renderRobot();
+    else if (currentTab.startsWith("w_")) {
+      const it = findItem(currentTab); if (!it) return;
+      const kind = detailKind(it);
+      if (kind === "robot" && id === it.entity) renderRobot($("#tab-detail"), it.entity);
+      else if (kind === "tv") window.Modules.tv.update($("#tab-detail"), it, api, id);
+    }
     else if (currentTab === "all") updateRow(id);
   }
   function renderList() {
@@ -537,5 +593,5 @@
   $("#search").addEventListener("input", renderList);
 
   renderAll();
-  window.PanelAPI = { ha, toast };
+  window.PanelAPI = { ha, toast, cfg };
 })();

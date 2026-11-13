@@ -56,3 +56,21 @@ Gizlilik: görüntü tarayıcıda işlenir, hiçbir yere gönderilmez. Kayda fot
 
 Kişi tanınınca Home Assistant'a `panel_face_seen` olayı (`name` ile) gönderilir. Otomasyonda tetikleyici olarak kullanabilirsin (örneğin gelince ışık aç).
 Kütüphane: @vladmandic/face-api (MIT), modeller `faces/models` içinde, internet gerekmez.
+
+## Ürün sekmeleri (hava durumu, harita, TV, robot, kamera)
+Ana sayfada **Düzenle, + Ekle** ile hava durumu, harita, medya oynatıcı (TV), robot ya da kamera ekle.
+Eklenen her ürün solda kendi sekmesini alır. Ana sayfadaki kutuya dokununca ayrıntısı o sekmede açılır.
+Kutu kaldırılınca sekmesi de kaybolur. TV kutusundaki anahtar TV'yi açıp kapatır, kutunun kendisi kumandayı açar.
+
+- **Hava durumu**: Open-Meteo kullanır, anahtar gerekmez. Konum boşsa Home Assistant'taki ev konumu alınır, `weather` ayarıyla değiştirilir.
+- **Harita**: Google Harita. Sekmede adres ya da `enlem,boylam` yazıp ara, uydu görünümü ve yakınlaştırma düğmeleri var. Daha kararlı olması için `mapsApiKey` (Maps Embed API) yazabilirsin.
+- **TV kumandası (Samsung)**: Home Assistant'a Samsung Smart TV entegrasyonunu ekle. Güç, ses, kanal ve kaynak `media_player` ile çalışır. Yön tuşları ve rakamlar için entegrasyonun oluşturduğu `remote.*` varlığı gerekir, panel eşleşeni kendi bulur. Bulamazsa kutuyu düzenleyip adı TV ile aynı yap.
+
+## Sesli selam: doğal Türkçe ses (Piper)
+Tarayıcının sesi kötüyse Home Assistant üzerinden Piper kullan:
+1. `piper/docker-compose.yml` dosyasını `~/homeserver/piper/` içine koy, `docker compose up -d` çalıştır.
+2. Home Assistant, Ayarlar, Cihazlar ve hizmetler, Entegrasyon ekle: **Wyoming Protocol**. Sunucu `127.0.0.1`, port `10200`.
+3. Eklenince `tts.piper` gibi bir varlık oluşur (Geliştirici araçları, Durumlar'da `tts.` ara).
+4. `config.js` içinde `faces: { ..., speak: true, voice: "tts.piper" }` yaz, sayfayı yenile. Yüzler sekmesindeki **Sesi dene** ile dinle.
+
+`voice` boşsa ya da Piper yanıt vermezse tarayıcı sesine geri döner.

@@ -9,9 +9,8 @@
 <body>
 <nav id="tabs" aria-label="Bölümler">
   <button data-tab="home" class="active"><span>Ana Sayfa</span></button>
-  <button data-tab="cams"><span>Kameralar</span></button>
+  <div id="ptabs"></div>
   <button data-tab="plan"><span>Kat Planı</span></button>
-  <button data-tab="robot"><span>Robot</span></button>
   <button data-tab="faces"><span>Yüzler</span></button>
   <button data-tab="all"><span>Tüm Cihazlar</span></button>
 </nav>
@@ -31,9 +30,8 @@
 
   <main>
     <section id="tab-home" class="tab active"></section>
-    <section id="tab-cams" class="tab"></section>
+    <section id="tab-detail" class="tab"></section>
     <section id="tab-plan" class="tab"></section>
-    <section id="tab-robot" class="tab"></section>
     <section id="tab-faces" class="tab"></section>
     <section id="tab-all" class="tab">
       <input id="search" type="search" placeholder="Cihaz adı ya da entity_id ile ara">
@@ -46,6 +44,7 @@
 <div id="toast" role="status"></div>
 <script src="config.js"></script>
 <script src="ha.js"></script>
+<script src="modules.js"></script>
 <script src="app.js"></script>
 <script src="faces.js"></script>
 </body>

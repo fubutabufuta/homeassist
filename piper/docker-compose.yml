@@ -1,0 +1,12 @@
+# Doğal Türkçe ses için Piper (yerel, internetsiz çalışır).
+# Başlat: cd ~/homeserver/piper && docker compose up -d
+services:
+  piper:
+    image: rhasspy/wyoming-piper
+    container_name: piper
+    restart: unless-stopped
+    command: --voice tr_TR-fettah-medium
+    volumes:
+      - ./data:/data:z
+    ports:
+      - "10200:10200"

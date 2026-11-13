@@ -31,10 +31,17 @@ window.PANEL_CONFIG = {
   faces: {
     enabled: false,        // true yapınca tabletin kamerası açılır
     greetUnknown: false,   // tanınmayan yüze sadece "Merhaba" de
+    voice: "",             // doğal ses: Piper kurunca "tts.piper" yaz (README, Sesli selam)
     speak: false,          // sesli selam. Yüzler sekmesindeki "Sesi dene" ile ses ve izin kontrol edilir
     cooldownMin: 5,        // aynı kişiyi tekrar karşılamadan önce bekleme (dakika)
     threshold: 0.5         // küçüldükçe daha katı eşleşme (0.4 - 0.6 arası dene)
   },
+
+  // Hava durumu konumu. Boşsa Home Assistant'taki ev konumu kullanılır.
+  weather: { latitude: null, longitude: null },
+
+  // İsteğe bağlı: Google Maps Embed API anahtarı. Boşsa herkese açık gömme adresi kullanılır.
+  mapsApiKey: "",
 
   // Görünüm: "auto" (HA'daki güneşe göre gündüz/gece), "day" ya da "night"
   theme: "auto",
