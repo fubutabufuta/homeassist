@@ -154,7 +154,7 @@
       const d = domain(it.entity);
       if (d === "camera") return "camera";
       if (d === "vacuum") return "robot";
-      if (d === "media_player") return "tv";
+      if (d === "media_player" || d === "remote") return "tv";
     }
     return null;
   }
@@ -462,12 +462,14 @@
       const match = (t) => !q || t.toLowerCase().includes(q);
       if (match("hava durumu hava")) row(svg(P.cloudsun), "Hava durumu", "Open-Meteo, anahtar gerekmez", "Ürün", () => addWidget({ type: "weather", name: "", w: 3, h: 2 }));
       if (match("harita google map")) row(svg(P.pin), "Harita", "Google Harita, dokununca tam ekran", "Ürün", () => addWidget({ type: "map", name: "Harita", query: "", zoom: 14, w: 4, h: 3 }));
+      Object.keys(states).sort().filter((id) => (domain(id) === "media_player" || domain(id) === "remote") && match("tv kumanda televizyon " + id + " " + fname(states[id]))).forEach((id) =>
+        row(svg(P.tv), "TV kumandası: " + fname(states[id]), id, "Ürün", () => addWidget({ type: "entity", entity: id, name: "", w: 2, h: 1 })));
       const haCams = Object.keys(states).some((id) => domain(id) === "camera");
       (haCams ? [] : cfg.cameras).forEach((c) => { if (match("kamera " + c.name))
         row(svg(P.camera), "Kamera: " + c.name, "go2rtc, " + c.src, "", () => addWidget({ type: "camera", src: c.src, name: c.name, w: 4, h: 3 })); });
       Object.keys(states).filter((id) => domain(id) === "vacuum" && match("robot " + fname(states[id]) + id)).forEach((id) =>
         row(svg(P.vacuum), "Robot kartı: " + fname(states[id]), id, "", () => addWidget({ type: "robot", entity: id, name: "", w: 3, h: 2 })));
-      Object.keys(states).sort().filter((id) => match(id + " " + fname(states[id]))).slice(0, 150).forEach((id) =>
+      Object.keys(states).sort().filter((id) => match(id + " " + fname(states[id]))).slice(0, q ? 400 : 150).forEach((id) =>
         row(iconFor(id), fname(states[id]), id, domain(id) === "camera" ? "Görüntü" : stateText(states[id]),
           () => addWidget(domain(id) === "camera" ? { type: "entity", entity: id, name: "", w: 4, h: 3 } : { type: "entity", entity: id, name: "", w: 2, h: 1 })));
     };

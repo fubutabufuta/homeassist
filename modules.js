@@ -188,7 +188,17 @@ window.Modules = (() => {
   };
 
   // ---------- TV kumandası ----------
+  const isRemote = (it) => it.entity.startsWith("remote.");
+  // Kutu bir remote.* ise eşleşen media_player'ı (güç, ses, kaynak için) adından bul
+  function findMedia(api, it) {
+    if (!isRemote(it)) return it.entity;
+    const st = api.states(), obj = it.entity.split(".")[1];
+    const name = (st[it.entity].attributes.friendly_name || "").toLowerCase();
+    return Object.keys(st).find((id) => id.startsWith("media_player.") &&
+      (id.split(".")[1] === obj || (name && (st[id].attributes.friendly_name || "").toLowerCase() === name))) || "";
+  }
   function findRemote(api, it) {
+    if (isRemote(it)) return api.states()[it.entity] ? it.entity : "";
     if (it.remote && api.states()[it.remote]) return it.remote;
     const st = api.states(), obj = it.entity.split(".")[1];
     const remotes = Object.keys(st).filter((id) => id.startsWith("remote."));
@@ -209,8 +219,12 @@ window.Modules = (() => {
       const remote = el("div", "remote");
       const pad = el("div", "tv-pad"), vol = el("div", "tv-row"), nums = el("div", "tv-nums"), play = el("div", "tv-row");
       let rid = "";
-      const call = (domain, service, data) => api.ha.callService(domain, service, data || {}, { entity_id: domain === "remote" ? rid : it.entity })
+      const call = (domain, service, data) => {
+        const target = domain === "remote" ? rid : findMedia(api, it);
+        if (!target) { api.toast("Bu TV için media_player varlığı bulunamadı"); return Promise.resolve(); }
+        return api.ha.callService(domain, service, data || {}, { entity_id: target })
         .catch((e) => api.toast("Komut gönderilemedi: " + ((e && e.message) || "bilinmeyen hata")));
+      };
       // key: remote varlığına gönderilen Samsung tuş adı; alt: kumanda varlığı yoksa media_player servisi
       const key = (label, k, alt, cls) => {
         const b = el("button", "rk" + (cls ? " " + cls : ""), label);
@@ -222,7 +236,7 @@ window.Modules = (() => {
         return b;
       };
       const power = el("button", "rk power", "Aç / Kapat");
-      power.addEventListener("click", () => call("media_player", "toggle"));
+      power.addEventListener("click", () => { if (findMedia(api, it)) call("media_player", "toggle"); else call("remote", "send_command", { command: "KEY_POWER" }); });
       const dpad = el("div", "dpad");
       dpad.append(el("span"), key("▲", "KEY_UP"), el("span"), key("◀", "KEY_LEFT"), key("OK", "KEY_ENTER", null, "ok"),
         key("▶", "KEY_RIGHT"), el("span"), key("▼", "KEY_DOWN"), el("span"));
@@ -243,7 +257,7 @@ window.Modules = (() => {
       root.append(wrap);
 
       const refresh = () => {
-        const st = api.states()[it.entity];
+        const st = api.states()[findMedia(api, it)] || api.states()[it.entity];
         title.textContent = it.name || (st ? st.attributes.friendly_name || it.entity : it.entity);
         stat.textContent = st ? api.stateText(st) : "Bulunamadı";
         const list = (st && st.attributes.source_list) || [];
