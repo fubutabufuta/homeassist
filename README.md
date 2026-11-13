@@ -38,6 +38,12 @@ Sonra tarayıcıda `Ctrl+Shift+R` (önbelleği atlayarak yenile).
 - Tüm Cihazlar: her cihazın entity_id adını gösterir.
 - Kameralar: go2rtc kurulunca çalışır. Kat planı 3D modülü sonraki aşamada.
 
+## Kameralar
+
+Home Assistant'a eklediğin kameralar (`camera.*`) panelde görüntü olarak görünür: Ana Sayfa'da Düzenle, + Ekle ile
+kamerayı seç (büyük kutu olarak gelir), Kameralar sekmesinde hepsi birden listelenir. Önce Home Assistant'ın canlı akışı,
+olmazsa 2 saniyede bir yenilenen anlık görüntü kullanılır. go2rtc şart değil, `cameras` listesi yalnız HA'da kamera yoksa devreye girer.
+
 ## Yüz tanıma (Merhaba, <ad>)
 
 Tabletin kamerası kişiyi görünce ekranda adıyla selam verir. Varsayılan **kapalı**.

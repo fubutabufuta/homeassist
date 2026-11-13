@@ -129,6 +129,14 @@ main{flex:1;min-height:0;padding:10px 28px 22px 8px;overflow:auto}
 .handle{position:absolute;right:0;bottom:0;width:38px;height:38px;cursor:nwse-resize;z-index:2;touch-action:none;
   background:linear-gradient(135deg,transparent 56%,var(--sea) 56%);border-bottom-right-radius:12px}
 
+/* HA kamera görüntüsü */
+.hacam{position:absolute;inset:0;background:#000}
+.hacam img{width:100%;height:100%;object-fit:cover;display:block}
+.hacam .label{position:absolute;left:12px;bottom:12px;background:rgba(0,0,0,.62);color:#fff;padding:5px 11px 5px 9px;
+  border-radius:8px;font-size:13px;display:flex;align-items:center;gap:7px}
+.hacam .label::before{content:"";width:8px;height:8px;border-radius:50%;background:#FF5A4D}
+.camnote{position:absolute;inset:0;display:none;place-items:center;text-align:center;padding:18px;
+  color:#A9BDC2;font-size:14px;line-height:1.5;background:#05090c}
 /* kameralar */
 .camgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(460px,1fr));gap:14px;height:100%;
   grid-auto-rows:minmax(300px,1fr)}

@@ -145,6 +145,39 @@
     renderAll();
   }));
 
+  // ---------- HA kamera görüntüsü (camera.* cihazları) ----------
+  // Önce HA'nın MJPEG akışı denenir, olmazsa 2 saniyede bir anlık görüntü yenilenir.
+  const camStops = { home: [], tab: [] };
+  const runStops = (k) => { camStops[k].forEach((f) => { try { f(); } catch (e) {} }); camStops[k] = []; };
+  function makeHaCam(entity, name, bucket) {
+    const box = el("div", "hacam");
+    const img = document.createElement("img"); img.alt = ""; img.draggable = false;
+    const lab = el("div", "label", name || entity);
+    const note = el("div", "camnote");
+    box.append(img, lab, note);
+    let mode = "stream", timer = null;
+    const attrs = () => (states[entity] && states[entity].attributes) || {};
+    const say = (t) => { note.textContent = t; note.style.display = t ? "grid" : "none"; };
+    const snap = () => { const t = attrs().access_token; if (!t) return say("Kameranın erişim anahtarı yok");
+      img.src = ha.base + "/api/camera_proxy/" + entity + "?token=" + encodeURIComponent(t) + "&_=" + Date.now(); };
+    img.onload = () => say("");
+    img.onerror = () => {
+      if (mode === "stream") { mode = "snap"; snap(); timer = setInterval(snap, 2000); }
+      else say("Görüntü alınamıyor. Kamera Home Assistant'ta çalışıyor mu?");
+    };
+    const t0 = attrs().access_token;
+    if (!states[entity]) say("Kamera bulunamadı");
+    else if (!t0) say("Kameranın erişim anahtarı yok");
+    else {
+      say("Bağlanıyor"); img.src = ha.base + "/api/camera_proxy_stream/" + entity + "?token=" + encodeURIComponent(t0);
+      // 6 saniyede ilk kare gelmezse anlık görüntü yöntemine geç
+      setTimeout(() => { if (mode === "stream" && note.textContent === "Bağlanıyor" && img.onerror) img.onerror(); }, 6000);
+    }
+    const stop = () => { clearInterval(timer); img.onerror = null; img.onload = null; img.removeAttribute("src"); };
+    camStops[bucket].push(stop);
+    return box;
+  }
+
   // ---------- ana sayfa: sürükle-bırak tuval ----------
   const PITCH = 120, GAP = 12;
   let layout = null, editMode = false, layoutLoaded = false;
@@ -183,6 +216,7 @@
   const colsNow = () => Math.max(2, Math.floor(($("#tab-home").clientWidth + GAP) / PITCH));
 
   function renderHome() {
+    runStops("home");
     const root = $("#tab-home"); root.replaceChildren();
     Object.keys(widgetRefs).forEach((k) => delete widgetRefs[k]);
     if (!layout) { root.append(el("div", "hint", "Düzen yükleniyor")); return; }
@@ -217,7 +251,10 @@
     const node = el("div", "w w-" + it.type); place(node, it);
     const body = el("div", "wbody"); node.append(body);
 
-    if (it.type === "entity") {
+    if (it.type === "entity" && domain(it.entity) === "camera") {
+      body.append(makeHaCam(it.entity, it.name || (states[it.entity] ? fname(states[it.entity]) : ""), "home"));
+      node.classList.add("nopad");
+    } else if (it.type === "entity") {
       const d = domain(it.entity);
       const top = el("div", "wtop"), ico = el("div", "ico");
       ico.innerHTML = iconFor(it.entity);
@@ -367,12 +404,14 @@
       list.replaceChildren();
       const q = inp.value.trim().toLowerCase();
       const match = (t) => !q || t.toLowerCase().includes(q);
-      cfg.cameras.forEach((c) => { if (match("kamera " + c.name))
+      const haCams = Object.keys(states).some((id) => domain(id) === "camera");
+      (haCams ? [] : cfg.cameras).forEach((c) => { if (match("kamera " + c.name))
         row(svg(P.camera), "Kamera: " + c.name, "go2rtc, " + c.src, "", () => addWidget({ type: "camera", src: c.src, name: c.name, w: 4, h: 3 })); });
       Object.keys(states).filter((id) => domain(id) === "vacuum" && match("robot " + fname(states[id]) + id)).forEach((id) =>
         row(svg(P.vacuum), "Robot kartı: " + fname(states[id]), id, "", () => addWidget({ type: "robot", entity: id, name: "", w: 3, h: 2 })));
       Object.keys(states).sort().filter((id) => match(id + " " + fname(states[id]))).slice(0, 150).forEach((id) =>
-        row(iconFor(id), fname(states[id]), id, stateText(states[id]), () => addWidget({ type: "entity", entity: id, name: "", w: 2, h: 1 })));
+        row(iconFor(id), fname(states[id]), id, domain(id) === "camera" ? "Görüntü" : stateText(states[id]),
+          () => addWidget(domain(id) === "camera" ? { type: "entity", entity: id, name: "", w: 4, h: 3 } : { type: "entity", entity: id, name: "", w: 2, h: 1 })));
     };
     inp.addEventListener("input", render); render();
   }
@@ -380,9 +419,15 @@
   // ---------- kameralar ----------
   function renderCams() {
     const root = $("#tab-cams");
-    if (currentTab !== "cams") { root.replaceChildren(); root.dataset.built = ""; return; }
+    if (currentTab !== "cams") { runStops("tab"); root.replaceChildren(); root.dataset.built = ""; return; }
     if (root.dataset.built === "1") return;
     root.dataset.built = "1";
+    const haIds = Object.keys(states).filter((id) => domain(id) === "camera").sort();
+    if (haIds.length) {
+      const g = el("div", "camgrid");
+      haIds.forEach((id) => { const box = el("div", "cam"); box.append(makeHaCam(id, fname(states[id]), "tab")); g.append(box); });
+      root.append(g); return;
+    }
     if (!cfg.cameras.length) { root.append(el("div", "hint", "Kamera tanımlı değil. config.js içindeki cameras listesine ekle.")); return; }
     const g = el("div", "camgrid");
     cfg.cameras.forEach((c) => {
@@ -441,6 +486,7 @@
     else if (currentTab === "faces") { if (window.Faces) window.Faces.renderTab($("#tab-faces")); }
     else if (currentTab === "all") renderList();
     if (currentTab !== "faces" && window.Faces) window.Faces.leaveTab();
+    if (currentTab !== "home") { runStops("home"); $("#tab-home").replaceChildren(); }
     if (currentTab !== "cams") { const c = $("#tab-cams"); c.dataset.built = ""; c.replaceChildren(); }
   }
   function renderChanged(id) {
