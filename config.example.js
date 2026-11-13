@@ -31,7 +31,7 @@ window.PANEL_CONFIG = {
   faces: {
     enabled: false,        // true yapınca tabletin kamerası açılır
     greetUnknown: false,   // tanınmayan yüze sadece "Merhaba" de
-    speak: false,          // sesli selam (tarayıcının Türkçe sesi gerekir)
+    speak: false,          // sesli selam. Yüzler sekmesindeki "Sesi dene" ile ses ve izin kontrol edilir
     cooldownMin: 5,        // aynı kişiyi tekrar karşılamadan önce bekleme (dakika)
     threshold: 0.5         // küçüldükçe daha katı eşleşme (0.4 - 0.6 arası dene)
   },

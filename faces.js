@@ -81,12 +81,30 @@
   }
   function hideGreeting() { if (overlay) overlay.classList.remove("show"); }
 
+  // ---------- sesli selam ----------
+  const canSpeak = () => "speechSynthesis" in window;
+  function trVoice() {
+    if (!canSpeak()) return null;
+    const vs = window.speechSynthesis.getVoices();
+    return vs.find((v) => /^tr(-|_|$)/i.test(v.lang)) || null;
+  }
+  function say(text) {
+    if (!canSpeak()) return false;
+    const u = new SpeechSynthesisUtterance(text); u.lang = "tr-TR"; u.rate = 0.95;
+    const v = trVoice(); if (v) u.voice = v;
+    window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+    return !!v;
+  }
+  // Tarayıcılar sayfa hiç dokunulmadan konuşmaya izin vermeyebilir: ilk dokunuşta sessizce kilidi aç
+  document.addEventListener("pointerdown", () => {
+    if (!canSpeak()) return;
+    const u = new SpeechSynthesisUtterance(" "); u.volume = 0; window.speechSynthesis.speak(u);
+  }, { once: true });
+
   function greet(label) {
     const text = label === "unknown" ? "Merhaba" : "Merhaba " + label;
     showGreeting(text);
-    if (cfg.speak && "speechSynthesis" in window) {
-      const u = new SpeechSynthesisUtterance(text); u.lang = "tr-TR"; window.speechSynthesis.speak(u);
-    }
+    if (cfg.speak) say(text);
     // Home Assistant otomasyonları bu olayı dinleyebilir (ör. gelince ışık aç)
     if (label !== "unknown") api.ha.send({ type: "fire_event", event_type: "panel_face_seen", event_data: { name: label } }, false).catch(() => {});
   }
@@ -137,6 +155,17 @@
       const h = el("p", "hint"); h.append("Tanıma şu an kapalı. ", el("code", "", "config.js"), " içinde ", el("code", "", "faces: { enabled: true }"), " yaz, sayfayı yenile.");
       wrap.append(h);
     }
+    const vrow = el("div", "voicerow");
+    const vbtn = el("button", "btn", "Sesi dene");
+    const vmsg = el("span", "tip");
+    const vstate = () => {
+      if (!canSpeak()) { vmsg.textContent = "Bu tarayıcı konuşmayı desteklemiyor."; return; }
+      vmsg.textContent = trVoice() ? "Türkçe ses bulundu." : "Türkçe ses bulunamadı, ses kötü ya da yabancı aksanlı çıkabilir.";
+    };
+    vbtn.addEventListener("click", () => { const ok = say("Merhaba " + (people[0] ? people[0].name : "dünya")); vstate();
+      if (!cfg.speak) api.toast("Sesli selam config.js içinde kapalı (speak: false)"); else if (!ok) api.toast("Türkçe ses bulunamadı"); });
+    vrow.append(vbtn, vmsg); wrap.append(vrow); vstate();
+    if (canSpeak()) window.speechSynthesis.onvoiceschanged = vstate;
     const list = el("div", "plist");
     if (!people.length) list.append(el("p", "hint", "Henüz kimse kayıtlı değil."));
     people.forEach((p, i) => {
