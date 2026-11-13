@@ -2,9 +2,48 @@
   const cfg = window.PANEL_CONFIG;
   const $ = (s, r = document) => r.querySelector(s);
   const TOGGLE = ["light", "switch", "input_boolean", "fan"];
-  const ON_STATES = ["on", "playing", "open", "heat", "cool", "cleaning", "home"];
+  const SWITCHY = TOGGLE.concat(["media_player", "cover"]);
+  const ON_STATES = ["on", "playing", "open", "heat", "cool", "home"];
   let states = {};
   let currentTab = "home";
+
+  // ---------- ikonlar (sabit çizimler) ----------
+  const svg = (p) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + "</svg>";
+  const P = {
+    light: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
+    switch: '<path d="M9 2v5M15 2v5M7 7h10v4a5 5 0 0 1-10 0V7zM12 16v6"/>',
+    fan: '<circle cx="12" cy="12" r="1.6"/><path d="M12 10.4C12 6 14 3 17 3c0 3-2 5.5-5 7.4zM13.6 12c4.4 0 7.4 2 7.4 5-3 0-5.5-2-7.4-5zM12 13.6C12 18 10 21 7 21c0-3 2-5.500 5-7.400zM10.400 12C6 12 3 10 3 7c3 0 5.500 2 7.400 5z"/>',
+    tv: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>',
+    cover: '<path d="M4 4h16M5 8h14M6 12h12M7 16h10M12 16v4"/>',
+    vacuum: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v3"/>',
+    thermo: '<path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/>',
+    drop: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.500 6-11 6-11z"/>',
+    gauge: '<path d="M4 16a8 8 0 1 1 16 0M12 16l4-5"/>',
+    dot: '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/>',
+    camera: '<path d="M3 8a2 2 0 0 1 2-2h2l1.500-2h7L17 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.500" r="3.500"/>',
+    climate: '<path d="M12 3v18M4.500 7.500l15 9M19.500 7.500l-15 9"/>',
+    scene: '<path d="M12 3l1.800 5.200L19 10l-5.200 1.800L12 17l-1.800-5.200L5 10l5.200-1.800z"/>',
+    person: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.400 1.400M17.600 17.600L19 19M5 19l1.400-1.400M17.600 6.400L19 5"/>',
+    cube: '<path d="M12 3l8 4.500v9L12 21l-8-4.500v-9z"/>',
+    home: '<path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/>',
+    plan: '<path d="M3 3h18v18H3zM3 12h8M11 3v18M11 15h10"/>',
+    all: '<rect x="3" y="3" width="7" height="7" rx="1.500"/><rect x="14" y="3" width="7" height="7" rx="1.500"/><rect x="3" y="14" width="7" height="7" rx="1.500"/><rect x="14" y="14" width="7" height="7" rx="1.500"/>'
+  };
+  function iconFor(id) {
+    const d = domain(id), s = states[id], dc = s && s.attributes && s.attributes.device_class;
+    if (d === "sensor") return svg(dc === "humidity" ? P.drop : dc === "temperature" ? P.thermo : P.gauge);
+    const m = { light: "light", switch: "switch", input_boolean: "switch", fan: "fan", media_player: "tv", cover: "cover",
+      vacuum: "vacuum", binary_sensor: "dot", camera: "camera", climate: "climate", scene: "scene", script: "scene",
+      button: "dot", person: "person", sun: "sun", weather: "sun" };
+    return svg(P[m[d] || "cube"]);
+  }
+  const NAV_ICONS = { home: P.home, cams: P.camera, plan: P.plan, robot: P.vacuum, all: P.all };
+  document.querySelectorAll("#tabs button").forEach((b) => b.insertAdjacentHTML("afterbegin", svg(NAV_ICONS[b.dataset.tab])));
+  const NAMES = { light: "Işıklar", switch: "Prizler ve anahtarlar", input_boolean: "Sanal anahtarlar", fan: "Fanlar",
+    sensor: "Sensörler", binary_sensor: "Algılayıcılar", media_player: "Medya", vacuum: "Süpürge", camera: "Kameralar",
+    climate: "İklim", cover: "Perdeler", scene: "Sahneler", script: "Komutlar", button: "Düğmeler", person: "Kişiler",
+    automation: "Otomasyonlar", sun: "Güneş", weather: "Hava", update: "Güncellemeler" };
 
   // ---------- yardımcılar ----------
   const el = (tag, cls, text) => {
@@ -18,34 +57,70 @@
   const isOn = (s) => ON_STATES.includes(s.state);
   const toast = (msg) => {
     const t = $("#toast"); t.textContent = msg; t.classList.add("show");
-    clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 1800);
+    clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 2000);
   };
+  const unitOf = (s) => (s.attributes && s.attributes.unit_of_measurement) || "";
+  const numFmt = (v) => { const n = Number(v); return isFinite(n) && v !== "" ? String(Math.round(n * 10) / 10) : v; };
   const stateText = (s) => {
-    const u = s.attributes && s.attributes.unit_of_measurement;
     const map = { on: "Açık", off: "Kapalı", unavailable: "Ulaşılamıyor", unknown: "Bilinmiyor",
       playing: "Oynatıyor", paused: "Duraklatıldı", idle: "Boşta", open: "Açık", closed: "Kapalı",
-      cleaning: "Temizliyor", docked: "İstasyonda", returning: "Dönüyor", home: "Evde", not_home: "Dışarıda" };
-    return (map[s.state] || s.state) + (u ? " " + u : "");
+      cleaning: "Temizliyor", docked: "İstasyonda", returning: "Şarja dönüyor", home: "Evde", not_home: "Dışarıda",
+      above_horizon: "Gün doğdu", below_horizon: "Gün battı", error: "Hata", paused_: "Duraklatıldı" };
+    const u = unitOf(s);
+    return (map[s.state] || numFmt(s.state)) + (u ? " " + u : "");
   };
+  const controllable = (id) => SWITCHY.concat(["scene", "script", "button"]).includes(domain(id));
 
-  // ---------- saat ----------
+  // ---------- tema: güneşe göre gündüz / gece ----------
+  function applyTheme() {
+    let mode = cfg.theme || "auto";
+    if (mode === "auto") {
+      const sun = states["sun.sun"];
+      if (sun && sun.state === "below_horizon") mode = "night";
+      else if (sun && sun.state === "above_horizon") mode = "day";
+      else { const h = new Date().getHours(); mode = (h >= 7 && h < 19) ? "day" : "night"; }
+    }
+    document.documentElement.dataset.theme = mode;
+  }
+  if (cfg.accent) document.documentElement.style.setProperty("--lit", cfg.accent);
+
+  // ---------- saat, selam, özet ----------
   function tick() {
-    const d = new Date();
+    const d = new Date(), h = d.getHours();
     $("#clock").textContent = d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
     $("#date").textContent = d.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
+    $("#greet").textContent = h < 5 ? "İyi geceler" : h < 12 ? "Günaydın" : h < 18 ? "İyi günler" : h < 22 ? "İyi akşamlar" : "İyi geceler";
+    applyTheme();
   }
-  tick(); setInterval(tick, 10000);
+  tick(); setInterval(tick, 20000);
+
+  function updateChips() {
+    const box = $("#chips"); box.replaceChildren();
+    const all = Object.values(states);
+    if (!all.length) return;
+    const lights = all.filter((s) => domain(s.entity_id) === "light");
+    const lightsOn = lights.filter((s) => s.state === "on").length;
+    const others = all.filter((s) => ["switch", "fan", "media_player", "input_boolean"].includes(domain(s.entity_id)));
+    const othersOn = others.filter((s) => isOn(s)).length;
+    const mk = (on, text) => { const c = el("div", "chip" + (on ? " on" : "")); c.append(el("i"), el("span", "", text)); box.append(c); };
+    if (lights.length) mk(lightsOn > 0, lightsOn > 0 ? lightsOn + " ışık yanıyor" : "Işıklar kapalı");
+    if (others.length) mk(othersOn > 0, othersOn > 0 ? othersOn + " cihaz açık" : "Cihazlar kapalı");
+  }
 
   // ---------- bağlantı ----------
   const ha = new HAClient({
     url: cfg.haUrl, token: cfg.token,
     onStatus: (st) => {
       const b = $("#status");
-      const t = { baglaniyor: ["bağlanıyor…", ""], bagli: ["bağlı", "ok"], kopuk: ["bağlantı koptu", "bad"],
-        jeton_hatali: ["jeton hatalı", "bad"] }[st] || [st, ""];
+      const t = { baglaniyor: ["Bağlanıyor", ""], bagli: ["Bağlı", "ok"], kopuk: ["Bağlantı koptu", "bad"],
+        jeton_hatali: ["Jeton hatalı", "bad"] }[st] || [st, ""];
       b.textContent = t[0]; b.className = "badge " + t[1];
     },
-    onState: (all, changed) => { states = all; if (changed) renderChanged(changed); else { renderAll(); loadLayout(); } }
+    onState: (all, changed) => {
+      states = all; updateChips();
+      if (!changed || changed === "sun.sun") applyTheme();
+      if (changed) renderChanged(changed); else { renderAll(); loadLayout(); }
+    }
   });
 
   function toggle(id) {
@@ -58,9 +133,8 @@
     else if (d === "scene" || d === "script") p = ha.callService(d, "turn_on", {}, { entity_id: id });
     else if (d === "button") p = ha.callService("button", "press", {}, { entity_id: id });
     else return;
-    p.catch((e) => toast("Hata: " + (e && e.message || "komut gönderilemedi")));
+    p.catch((e) => toast("Komut gönderilemedi: " + ((e && e.message) || "bilinmeyen hata")));
   }
-  const controllable = (id) => TOGGLE.concat(["media_player", "cover", "scene", "script", "button"]).includes(domain(id));
 
   // ---------- sekmeler ----------
   document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => {
@@ -73,7 +147,7 @@
   // ---------- ana sayfa: sürükle-bırak tuval ----------
   const PITCH = 120, GAP = 12;
   let layout = null, editMode = false, layoutLoaded = false;
-  const widgetRefs = {};            // item.id -> { update() }
+  const widgetRefs = {};
   const uid = () => "w" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 
   function seedLayout() {
@@ -110,21 +184,21 @@
   function renderHome() {
     const root = $("#tab-home"); root.replaceChildren();
     Object.keys(widgetRefs).forEach((k) => delete widgetRefs[k]);
-    if (!layout) { root.append(el("div", "hint", "Düzen yükleniyor…")); return; }
+    if (!layout) { root.append(el("div", "hint", "Düzen yükleniyor")); return; }
 
     const bar = el("div", "toolbar");
-    const eb = el("button", "btn" + (editMode ? " primary" : ""), editMode ? "Bitti" : "Düzenle");
+    const eb = el("button", "btn" + (editMode ? " solid" : ""), editMode ? "Tamam" : "Düzenle");
     eb.addEventListener("click", () => { editMode = !editMode; renderHome(); });
     bar.append(eb);
     if (editMode) {
       const ab = el("button", "btn", "+ Ekle"); ab.addEventListener("click", openPicker); bar.append(ab);
-      bar.append(el("span", "tip", "Kutuyu sürükle · köşeden büyüt · ✕ ile kaldır"));
+      bar.append(el("span", "tip", "Kutuyu sürükleyerek taşı, sağ alt köşesinden büyüt, ✕ ile kaldır."));
     }
     root.append(bar);
 
     if (!layout.length) {
-      root.append(el("div", "hint", editMode ? "Boş tuval. + Ekle ile cihaz, kamera veya robot ekle."
-        : "Ana sayfa boş. Sağ üstteki Düzenle'ye basıp + Ekle ile istediğin cihazları yerleştir."));
+      root.append(el("div", "hint", editMode ? "Tuval boş. + Ekle ile ilk kutunu koy."
+        : "Ana sayfa boş. Düzenle'ye dokunup + Ekle ile ilk kutunu koy."));
     }
     const canvas = el("div", "canvas" + (editMode ? " edit" : ""));
     let maxY = 0;
@@ -143,12 +217,22 @@
     const body = el("div", "wbody"); node.append(body);
 
     if (it.type === "entity") {
-      const nm = el("div", "name"), stt = el("div", "state");
-      body.append(nm, stt);
+      const d = domain(it.entity);
+      const top = el("div", "wtop"), ico = el("div", "ico");
+      ico.innerHTML = iconFor(it.entity);
+      top.append(ico);
+      if (SWITCHY.includes(d)) { const sw = el("div", "sw"); sw.append(el("i")); top.append(sw); }
+      const meta = el("div", "wmeta"), nm = el("div", "name"), stt = el("div", "state");
+      meta.append(nm, stt); body.append(top, meta);
+      if (d === "sensor") node.classList.add("sensor");
       const upd = () => {
         const s = states[it.entity];
         nm.textContent = it.name || (s ? fname(s) : it.entity);
-        stt.textContent = s ? stateText(s) : "bulunamadı";
+        if (!s) stt.textContent = "Bulunamadı";
+        else if (d === "sensor") {
+          const v = el("span", "v", numFmt(s.state)), u = el("span", "u", unitOf(s));
+          stt.replaceChildren(v, u);
+        } else stt.textContent = stateText(s);
         node.classList.toggle("on", !!s && isOn(s));
         node.classList.toggle("unavail", !s || s.state === "unavailable");
       };
@@ -161,31 +245,41 @@
       body.append(f, el("div", "label", it.name || it.src));
       node.classList.add("nopad");
     } else if (it.type === "robot") {
-      const title = el("div", "name"), stt = el("div", "state"), row = el("div", "btnrow small");
-      body.append(title, stt, row);
+      const top = el("div", "wtop"), ico = el("div", "ico");
+      ico.innerHTML = svg(P.vacuum); top.append(ico);
+      const meta = el("div", "wmeta"), title = el("div", "name"), stt = el("div", "state big");
+      meta.append(title, stt);
+      const bat = el("div", "bat"), segs = el("div", "segs"), pct = el("span", "pct");
+      for (let i = 0; i < 10; i++) segs.append(el("i"));
+      bat.append(segs, pct);
+      const row = el("div", "btnrow small");
       const act = (label, svc, cls) => {
         const b = el("button", "btn " + (cls || ""), label);
         b.addEventListener("click", (e) => { e.stopPropagation(); if (editMode) return;
-          ha.callService("vacuum", svc, {}, { entity_id: it.entity }).then(() => toast(label)).catch(() => toast("Hata")); });
+          ha.callService("vacuum", svc, {}, { entity_id: it.entity }).then(() => toast(label))
+            .catch(() => toast("Komut gönderilemedi")); });
         row.append(b);
       };
       act("Başlat", "start", "primary"); act("Duraklat", "pause"); act("Şarja dön", "return_to_base");
+      body.append(top, meta, bat, row);
       const upd = () => {
         const s = states[it.entity];
         title.textContent = it.name || (s ? fname(s) : it.entity);
-        const bat = s && s.attributes && s.attributes.battery_level;
-        stt.textContent = s ? stateText(s) + (bat !== undefined ? " · %" + bat : "") : "bulunamadı";
-        node.classList.toggle("on", !!s && s.state === "cleaning");
+        stt.textContent = s ? stateText(s) : "Bulunamadı";
+        const b = s && s.attributes && s.attributes.battery_level;
+        bat.style.visibility = b === undefined ? "hidden" : "visible";
+        if (b !== undefined) { segs.querySelectorAll("i").forEach((x, i) => x.classList.toggle("f", i < Math.round(b / 10))); pct.textContent = "%" + b; }
+        node.classList.toggle("cleaning", !!s && s.state === "cleaning");
       };
       upd(); widgetRefs[it.id] = { entity: it.entity, update: upd };
     }
 
     if (editMode) {
-      const x = el("button", "xbtn", "✕");
+      const x = el("button", "xbtn", "✕"); x.setAttribute("aria-label", "Kaldır");
       x.addEventListener("pointerdown", (e) => e.stopPropagation());
       x.addEventListener("click", (e) => { e.stopPropagation();
         layout = layout.filter((o) => o.id !== it.id); saveLayout(); renderHome(); });
-      const ren = el("button", "rbtn", "✎");
+      const ren = el("button", "rbtn", "✎"); ren.setAttribute("aria-label", "Yeniden adlandır");
       ren.addEventListener("pointerdown", (e) => e.stopPropagation());
       ren.addEventListener("click", (e) => { e.stopPropagation();
         const n = window.prompt("Kutu adı:", it.name || ""); if (n === null) return;
@@ -254,33 +348,30 @@
   function openPicker() {
     closePicker();
     picker = el("div", "modal");
-    const box = el("div", "mbox");
-    const top = el("div", "mtop");
-    const inp = el("input"); inp.type = "search"; inp.placeholder = "Cihaz ara…";
+    const box = el("div", "mbox"), top = el("div", "mtop");
+    const inp = el("input"); inp.type = "search"; inp.placeholder = "Cihaz ara";
     const cl = el("button", "btn", "Kapat"); cl.addEventListener("click", closePicker);
     top.append(inp, cl);
     const list = el("div", "mlist");
     box.append(top, list); picker.append(box); document.body.append(picker);
+    picker.addEventListener("click", (e) => { if (e.target === picker) closePicker(); });
 
+    const row = (iconSvg, title, sub, right, fn) => {
+      const r = el("div", "mrow"), ic = el("div", "ico"); ic.innerHTML = iconSvg;
+      const n = el("div", "n"); n.append(el("b", "", title), el("span", "", sub));
+      r.append(ic, n); if (right) r.append(el("div", "s", right));
+      r.addEventListener("click", fn); list.append(r);
+    };
     const render = () => {
       list.replaceChildren();
       const q = inp.value.trim().toLowerCase();
-      const special = [];
-      cfg.cameras.forEach((c) => special.push({ label: "Kamera: " + c.name, sub: "go2rtc · " + c.src,
-        add: () => addWidget({ type: "camera", src: c.src, name: c.name, w: 4, h: 3 }) }));
-      Object.keys(states).filter((id) => domain(id) === "vacuum").forEach((id) =>
-        special.push({ label: "Robot kartı: " + fname(states[id]), sub: id,
-          add: () => addWidget({ type: "robot", entity: id, name: "", w: 3, h: 2 }) }));
-      special.filter((s) => !q || s.label.toLowerCase().includes(q)).forEach((s) => {
-        const r = el("div", "mrow"); const n = el("div", "n"); n.append(el("b", "", s.label), el("span", "", s.sub));
-        r.append(n); r.addEventListener("click", s.add); list.append(r); });
-      Object.keys(states).sort().filter((id) => !q || id.toLowerCase().includes(q) ||
-        fname(states[id]).toLowerCase().includes(q)).slice(0, 150).forEach((id) => {
-        const r = el("div", "mrow"); const n = el("div", "n");
-        n.append(el("b", "", fname(states[id])), el("span", "", id));
-        r.append(n, el("div", "s", stateText(states[id])));
-        r.addEventListener("click", () => addWidget({ type: "entity", entity: id, name: "", w: 2, h: 1 }));
-        list.append(r); });
+      const match = (t) => !q || t.toLowerCase().includes(q);
+      cfg.cameras.forEach((c) => { if (match("kamera " + c.name))
+        row(svg(P.camera), "Kamera: " + c.name, "go2rtc, " + c.src, "", () => addWidget({ type: "camera", src: c.src, name: c.name, w: 4, h: 3 })); });
+      Object.keys(states).filter((id) => domain(id) === "vacuum" && match("robot " + fname(states[id]) + id)).forEach((id) =>
+        row(svg(P.vacuum), "Robot kartı: " + fname(states[id]), id, "", () => addWidget({ type: "robot", entity: id, name: "", w: 3, h: 2 })));
+      Object.keys(states).sort().filter((id) => match(id + " " + fname(states[id]))).slice(0, 150).forEach((id) =>
+        row(iconFor(id), fname(states[id]), id, stateText(states[id]), () => addWidget({ type: "entity", entity: id, name: "", w: 2, h: 1 })));
     };
     inp.addEventListener("input", render); render();
   }
@@ -288,9 +379,10 @@
   // ---------- kameralar ----------
   function renderCams() {
     const root = $("#tab-cams");
-    if (currentTab !== "cams") { root.replaceChildren(); return; } // sekmeden çıkınca akışı kapat
+    if (currentTab !== "cams") { root.replaceChildren(); root.dataset.built = ""; return; }
     if (root.dataset.built === "1") return;
     root.dataset.built = "1";
+    if (!cfg.cameras.length) { root.append(el("div", "hint", "Kamera tanımlı değil. config.js içindeki cameras listesine ekle.")); return; }
     const g = el("div", "camgrid");
     cfg.cameras.forEach((c) => {
       const box = el("div", "cam");
@@ -306,43 +398,40 @@
   // ---------- kat planı ----------
   function renderPlan() {
     const root = $("#tab-plan"); if (root.dataset.built) return; root.dataset.built = "1";
-    const h = el("div", "hint");
-    h.append(el("b", "", "Kat planı 3D modülü sonraki aşamada."),
-      document.createElement("br"),
-      "7 oda GLB dosyası birleştirilince burada ev modeli görünecek: odaya dokununca o odanın ",
-      "cihazları açılacak, robot süpürgenin konumu planın üstünde canlı çıkacak.");
-    root.append(h);
+    const e = el("div", "empty");
+    e.insertAdjacentHTML("afterbegin", '<svg viewBox="0 0 220 130" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" aria-hidden="true"><path d="M6 6h208v118H6zM6 66h86M92 6v118M92 90h122M150 90v34"/></svg>');
+    e.append(el("h2", "", "Kat planı yakında"),
+      el("p", "", "Oda dosyaları (GLB) eklenince evin 3 boyutlu modeli burada görünecek. Odaya dokununca o odanın cihazları açılacak, robotun konumu planın üstünde canlı çıkacak."));
+    root.append(e);
   }
 
-  // ---------- robot ----------
+  // ---------- robot sekmesi ----------
   function renderRobot() {
     const root = $("#tab-robot"); root.replaceChildren();
     const id = cfg.vacuum;
     const s = id && states[id];
     if (!s) {
       const h = el("div", "hint");
-      h.append("Robot süpürge ayarlanmadı. HA'ya Roborock entegrasyonunu ekledikten sonra ",
-        el("b", "", "Tüm Cihazlar"), " sekmesinde ", el("code", "", "vacuum."), " ile başlayan adı bul, ",
+      h.append("Robot süpürge seçilmedi. Roborock'u Home Assistant'a ekledikten sonra ",
+        el("b", "", "Tüm Cihazlar"), " sekmesinde ", el("code", "", "vacuum."), " ile başlayan adı bul ve ",
         el("code", "", "config.js"), " içindeki ", el("code", "", "vacuum"), " alanına yaz.");
       root.append(h); return;
     }
     const wrap = el("div", "robot");
-    wrap.append(el("div", "big", fname(s) + " — " + stateText(s)));
-    const bat = s.attributes && s.attributes.battery_level;
-    if (bat !== undefined) wrap.append(el("div", "state", "Pil: %" + bat));
+    wrap.append(el("div", "big", stateText(s)), el("div", "meta", fname(s) + (s.attributes && s.attributes.battery_level !== undefined ? ", pil %" + s.attributes.battery_level : "")));
     const row = el("div", "btnrow");
     const act = (label, svc, cls) => {
       const b = el("button", "btn " + (cls || ""), label);
       b.addEventListener("click", () => ha.callService("vacuum", svc, {}, { entity_id: id })
-        .then(() => toast(label)).catch((e) => toast("Hata: " + (e && e.message || ""))));
+        .then(() => toast(label)).catch(() => toast("Komut gönderilemedi")));
       row.append(b);
     };
-    act("Başlat", "start", "primary"); act("Duraklat", "pause");
-    act("Şarja dön", "return_to_base"); act("Beni bul", "locate");
+    act("Başlat", "start", "primary"); act("Duraklat", "pause"); act("Şarja dön", "return_to_base"); act("Beni bul", "locate");
     wrap.append(row); root.append(wrap);
   }
 
   // ---------- tüm cihazlar ----------
+  let filterDomain = "";
   function renderAll() {
     if (currentTab === "home") renderHome();
     else if (currentTab === "cams") renderCams();
@@ -359,22 +448,31 @@
   function renderList() {
     const q = $("#search").value.trim().toLowerCase();
     const root = $("#all-list"); root.replaceChildren();
-    const ids = Object.keys(states).filter((id) => !q || id.toLowerCase().includes(q) ||
-      fname(states[id]).toLowerCase().includes(q)).sort();
-    let last = "";
+    const doms = {};
+    Object.keys(states).forEach((id) => { const d = domain(id); doms[d] = (doms[d] || 0) + 1; });
+    const fb = $("#filters"); fb.replaceChildren();
+    const chip = (d, label) => { const b = el("button", filterDomain === d ? "active" : "", label);
+      b.addEventListener("click", () => { filterDomain = d; renderList(); }); fb.append(b); };
+    chip("", "Tümü " + Object.keys(states).length);
+    Object.keys(doms).sort().forEach((d) => chip(d, (NAMES[d] || d) + " " + doms[d]));
+    const ids = Object.keys(states).filter((id) => (!filterDomain || domain(id) === filterDomain) &&
+      (!q || id.toLowerCase().includes(q) || fname(states[id]).toLowerCase().includes(q))).sort();
+    let last = "", count = 0, head = null;
     ids.forEach((id) => {
       const d = domain(id);
-      if (d !== last) { root.append(el("div", "group", d)); last = d; }
-      root.append(makeRow(id));
+      if (d !== last) { if (head) head.append(el("span", "", String(count))); head = el("div", "group", NAMES[d] || d); root.append(head); last = d; count = 0; }
+      count++; root.append(makeRow(id));
     });
+    if (head) head.append(el("span", "", String(count)));
     if (!ids.length) root.append(el("div", "hint", "Eşleşen cihaz yok."));
   }
   function makeRow(id) {
     const s = states[id];
     const r = el("div", "row"); r.dataset.entity = id;
+    const ic = el("div", "ico"); ic.innerHTML = iconFor(id);
     const n = el("div", "n"); n.append(el("b", "", fname(s)), el("span", "", id));
     const st = el("div", "s" + (isOn(s) ? " on" : ""), stateText(s));
-    r.append(n, st);
+    r.append(ic, n, st);
     if (controllable(id)) {
       const b = el("button", "", "Değiştir"); b.addEventListener("click", () => toggle(id)); r.append(b);
     }

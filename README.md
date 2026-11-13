@@ -24,6 +24,13 @@ Aç: http://localhost:8123/local/panel/index.html
 
 Sonra tarayıcıda `Ctrl+Shift+R` (önbelleği atlayarak yenile).
 
+## Görünüm
+
+- Gündüz ve gece temaları otomatik değişir (HA'daki `sun.sun` varlığına göre; yoksa saate göre).
+  Sabitlemek için `config.js` içinde `theme: "day"` ya da `"night"` yaz.
+- Açık kutular lamba sarısıyla dolar, robot temizlerken mavi olur.
+- Yazı tipi Archivo (SIL Open Font License), `fonts/` klasöründe, internet gerekmez.
+
 ## Kullanım
 
 - Ana Sayfa > Düzenle: kutuyu sürükle, sağ alt köşeden büyüt, ✎ ile adlandır, ✕ ile kaldır.

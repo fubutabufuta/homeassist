@@ -26,6 +26,9 @@ window.PANEL_CONFIG = {
   // Robot süpürge entity_id'si (Roborock entegrasyonu eklenince "Tüm cihazlar"da görünür)
   vacuum: "",
 
+  // Görünüm: "auto" (HA'daki güneşe göre gündüz/gece), "day" ya da "night"
+  theme: "auto",
+
   // Kat planı: GLB dosyası (panel klasörüne koy) — şimdilik boş
   floorplan: ""
 };

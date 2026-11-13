@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-theme="night">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
@@ -7,33 +7,40 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header>
-  <div id="clock">--:--</div>
-  <div id="date"></div>
-  <div class="spacer"></div>
-  <div id="status" class="badge">bağlanıyor…</div>
-</header>
-
-<nav id="tabs">
-  <button data-tab="home" class="active">Ana Sayfa</button>
-  <button data-tab="cams">Kameralar</button>
-  <button data-tab="plan">Kat Planı</button>
-  <button data-tab="robot">Robot</button>
-  <button data-tab="all">Tüm Cihazlar</button>
+<nav id="tabs" aria-label="Bölümler">
+  <button data-tab="home" class="active"><span>Ana Sayfa</span></button>
+  <button data-tab="cams"><span>Kameralar</span></button>
+  <button data-tab="plan"><span>Kat Planı</span></button>
+  <button data-tab="robot"><span>Robot</span></button>
+  <button data-tab="all"><span>Tüm Cihazlar</span></button>
 </nav>
 
-<main>
-  <section id="tab-home" class="tab active"></section>
-  <section id="tab-cams" class="tab"></section>
-  <section id="tab-plan" class="tab"></section>
-  <section id="tab-robot" class="tab"></section>
-  <section id="tab-all" class="tab">
-    <input id="search" type="search" placeholder="Cihaz ara (ad ya da entity_id)…">
-    <div id="all-list"></div>
-  </section>
-</main>
+<div id="shell">
+  <header>
+    <div id="clock">--:--</div>
+    <div class="hd-meta">
+      <div id="greet"></div>
+      <div id="date"></div>
+    </div>
+    <div id="chips"></div>
+    <div class="spacer"></div>
+    <div id="status" class="badge">Bağlanıyor</div>
+  </header>
 
-<div id="toast"></div>
+  <main>
+    <section id="tab-home" class="tab active"></section>
+    <section id="tab-cams" class="tab"></section>
+    <section id="tab-plan" class="tab"></section>
+    <section id="tab-robot" class="tab"></section>
+    <section id="tab-all" class="tab">
+      <input id="search" type="search" placeholder="Cihaz adı ya da entity_id ile ara">
+      <div id="filters"></div>
+      <div id="all-list"></div>
+    </section>
+  </main>
+</div>
+
+<div id="toast" role="status"></div>
 <script src="config.js"></script>
 <script src="ha.js"></script>
 <script src="app.js"></script>
