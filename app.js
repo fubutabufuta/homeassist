@@ -191,12 +191,45 @@
   // Önce HA'nın MJPEG akışı denenir, olmazsa 2 saniyede bir anlık görüntü yenilenir.
   const camStops = { home: [], tab: [] };
   const runStops = (k) => { camStops[k].forEach((f) => { try { f(); } catch (e) {} }); camStops[k] = []; };
-  function makeHaCam(entity, name, bucket) {
+  // Pan/tilt: HA'nın onvif.ptz ya da tapo_control.ptz servisi varsa oklar görünür. Yakınlaştırma (+/−) dijitaldir, her kamerada çalışır.
+  let ptzP = null;
+  const ptzService = () => ptzP || (ptzP = ha.send({ type: "get_services" }).then((r) => {
+    r = r || {}; return r.onvif && r.onvif.ptz ? "onvif" : r.tapo_control && r.tapo_control.ptz ? "tapo_control" : "";
+  }).catch(() => ""));
+  function makePtz(entity, img, big) {
+    const ctl = el("div", "ptz" + (big ? " big" : ""));
+    ["pointerdown", "click", "dblclick"].forEach((ev) => ctl.addEventListener(ev, (e) => e.stopPropagation()));
+    let zoom = 1;
+    const setZoom = (z) => { zoom = Math.min(4, Math.max(1, z)); img.style.transform = zoom === 1 ? "" : "scale(" + zoom + ")"; };
+    const b = (label, aria, fn, cls) => { const x = el("button", cls || "", label); x.setAttribute("aria-label", aria); x.addEventListener("click", fn); return x; };
+    const zoomRow = el("div", "zoom");
+    zoomRow.append(b("+", "Yakınlaştır", () => setZoom(zoom + 0.5)), b("−", "Uzaklaştır", () => setZoom(zoom - 0.5)));
+    ctl.append(zoomRow);
+    ptzService().then((svc) => {
+      if (!svc || !ctl.isConnected) return;
+      const move = (pan, tilt) => {
+        const data = svc === "onvif"
+          ? { move_mode: "ContinuousMove", continuous_duration: 0.4, speed: 0.6 }
+          : { distance: 0.1 };
+        if (pan) data.pan = pan; if (tilt) data.tilt = tilt;
+        ha.callService(svc, "ptz", data, { entity_id: entity })
+          .catch((e) => toast("Kamera yönlendirilemedi: " + ((e && e.message) || "bu kamera PTZ desteklemiyor olabilir")));
+      };
+      const pad = el("div", "pad");
+      pad.append(el("span"), b("▲", "Yukarı", () => move("", "UP")), el("span"),
+        b("◀", "Sola", () => move("LEFT", "")), el("span"), b("▶", "Sağa", () => move("RIGHT", "")),
+        el("span"), b("▼", "Aşağı", () => move("", "DOWN")), el("span"));
+      ctl.prepend(pad);
+    });
+    return ctl;
+  }
+  function makeHaCam(entity, name, bucket, big) {
     const box = el("div", "hacam");
     const img = document.createElement("img"); img.alt = ""; img.draggable = false;
     const lab = el("div", "label", name || entity);
     const note = el("div", "camnote");
     box.append(img, lab, note);
+    if (states[entity]) box.append(makePtz(entity, img, big));
     let mode = "stream", timer = null;
     const attrs = () => (states[entity] && states[entity].attributes) || {};
     const say = (t) => { note.textContent = t; note.style.display = t ? "grid" : "none"; };
@@ -527,7 +560,7 @@
         const f = document.createElement("iframe");
         f.src = cfg.go2rtcUrl + "/stream.html?src=" + encodeURIComponent(it.src) + "&mode=webrtc,mse";
         f.allow = "autoplay; fullscreen"; box.append(f);
-      } else box.append(makeHaCam(it.entity, itemName(it), "tab"));
+      } else box.append(makeHaCam(it.entity, itemName(it), "tab", true));
       root.append(box);
     }
   }

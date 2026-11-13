@@ -286,3 +286,19 @@ main{flex:1;min-height:0;padding:10px 28px 22px 8px;overflow:auto}
 .tv-src label{color:var(--mute);font-size:13px}
 .tv-src select{background:var(--tile);color:var(--text);border:1.5px solid var(--line);border-radius:12px;padding:11px;font:inherit}
 .tv-side .tip{color:var(--mute);font-size:13px;line-height:1.5;margin:0}
+
+/* kamera: pan/tilt ve yakınlaştırma */
+.hacam{overflow:hidden}
+.hacam img{transition:transform .2s;transform-origin:center}
+.ptz{position:absolute;right:10px;bottom:10px;display:flex;align-items:flex-end;gap:8px;z-index:2}
+.ptz button{border:0;border-radius:10px;background:rgba(0,0,0,.55);color:#fff;cursor:pointer;
+  width:34px;height:34px;font-size:14px;line-height:1;backdrop-filter:blur(4px)}
+.ptz button:active{background:var(--sea)}
+.ptz .pad{display:grid;grid-template-columns:repeat(3,34px);gap:4px}
+.ptz .zoom{display:grid;gap:4px}
+.ptz .zoom button{font-size:20px}
+.ptz.big button{width:52px;height:52px;font-size:20px;border-radius:14px}
+.ptz.big .pad{grid-template-columns:repeat(3,52px);gap:6px}
+.ptz.big .zoom{gap:6px} .ptz.big .zoom button{font-size:28px}
+.ptz.big{right:18px;bottom:18px;gap:14px}
+.canvas.edit .ptz{display:none}
