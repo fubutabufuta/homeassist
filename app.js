@@ -70,6 +70,11 @@
     const u = unitOf(s);
     return (map[s.state] || numFmt(s.state)) + (u ? " " + u : "");
   };
+  // Robot süpürge: config'te yazılıysa o, yoksa Home Assistant'taki ilk vacuum.* cihazı
+  const vacuumId = () => {
+    if (cfg.vacuum && states[cfg.vacuum]) return cfg.vacuum;
+    return Object.keys(states).filter((id) => id.startsWith("vacuum.")).sort()[0] || "";
+  };
   const controllable = (id) => SWITCHY.concat(["scene", "script", "button"]).includes(domain(id));
 
   // ---------- tema: güneşe göre gündüz / gece ----------
@@ -454,13 +459,11 @@
   // ---------- robot sekmesi ----------
   function renderRobot() {
     const root = $("#tab-robot"); root.replaceChildren();
-    const id = cfg.vacuum;
+    const id = vacuumId();
     const s = id && states[id];
     if (!s) {
       const h = el("div", "hint");
-      h.append("Robot süpürge seçilmedi. Roborock'u Home Assistant'a ekledikten sonra ",
-        el("b", "", "Tüm Cihazlar"), " sekmesinde ", el("code", "", "vacuum."), " ile başlayan adı bul ve ",
-        el("code", "", "config.js"), " içindeki ", el("code", "", "vacuum"), " alanına yaz.");
+      h.append("Home Assistant'ta robot süpürge bulunamadı. Roborock'u Ayarlar, Cihazlar ve hizmetler bölümünden ekledikten sonra burada kendiliğinden görünür.");
       root.append(h); return;
     }
     const wrap = el("div", "robot");
@@ -491,7 +494,7 @@
   }
   function renderChanged(id) {
     if (currentTab === "home") Object.values(widgetRefs).forEach((w) => { if (w.entity === id) w.update(); });
-    else if (currentTab === "robot" && id === cfg.vacuum) renderRobot();
+    else if (currentTab === "robot" && id === vacuumId()) renderRobot();
     else if (currentTab === "all") updateRow(id);
   }
   function renderList() {
